@@ -20,8 +20,10 @@ jobs:
         run: pwsh check.ps1
 
       - name: Commit state changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add amazon_stock_state.txt amazon_stock_check.log
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock state and log" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock state and log" && git push https://x-access-token:${GITHUB_TOKEN}@github.com/komooogiii/amazon-stock-check.git)
