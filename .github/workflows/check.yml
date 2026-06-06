@@ -12,20 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run stock check
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: pwsh check.ps1
 
-      - name: Commit state changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          if [ -f amazon_stock_state.txt ] || [ -f amazon_stock_check.log ]; then
-            git add -A
-            git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock state and log" && git push https://x-access-token:${GITHUB_TOKEN}@github.com/komooogiii/amazon-stock-check.git)
-          fi
+          git add -A
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update stock check log"
+          git push
