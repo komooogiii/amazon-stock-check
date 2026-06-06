@@ -25,5 +25,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add amazon_stock_state.txt amazon_stock_check.log
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock state and log" && git push https://x-access-token:${GITHUB_TOKEN}@github.com/komooogiii/amazon-stock-check.git)
+          if [ -f amazon_stock_state.txt ] || [ -f amazon_stock_check.log ]; then
+            git add -A
+            git diff --quiet && git diff --staged --quiet || (git commit -m "Update stock state and log" && git push https://x-access-token:${GITHUB_TOKEN}@github.com/komooogiii/amazon-stock-check.git)
+          fi
