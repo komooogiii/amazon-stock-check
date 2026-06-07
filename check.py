@@ -45,6 +45,12 @@ def check_stock():
     log_msg("Check started")
     log_msg(f"Opening URL: {URL}")
 
+    # TEST MODE - Remove this after testing
+    TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+    if TEST_MODE:
+        log_msg("TEST MODE: Simulating in-stock status")
+        return True, ["テストモード: カートに入れるボタンが表示 (シミュレーション)"]
+
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
