@@ -9,7 +9,24 @@ $discordWebhookUrl = $env:DISCORD_WEBHOOK
 try {
     Add-Content $logFile "$timestamp - Check started"
 
-    $response = Invoke-WebRequest -Uri $url -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -TimeoutSec 10 -Headers @{"Accept-Language"="ja-JP,ja;q=0.9"}
+    $headers = @{
+        "Accept" = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
+        "Accept-Language" = "ja-JP,ja;q=0.9,en;q=0.8"
+        "Accept-Encoding" = "gzip, deflate, br"
+        "Cache-Control" = "max-age=0"
+        "Upgrade-Insecure-Requests" = "1"
+        "Sec-Fetch-Dest" = "document"
+        "Sec-Fetch-Mode" = "navigate"
+        "Sec-Fetch-Site" = "none"
+        "Sec-Fetch-User" = "?1"
+    }
+
+    $response = Invoke-WebRequest -Uri $url `
+        -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" `
+        -Headers $headers `
+        -TimeoutSec 15 `
+        -ErrorAction Stop
+
     $html = $response.Content
 
     Add-Content $logFile "$timestamp - HTTP Status: $($response.StatusCode), Content Length: $($html.Length)"
@@ -20,8 +37,9 @@ try {
         exit 0
     }
 
-    if ($html.Length -lt 1000) {
-        Add-Content $logFile "$timestamp - HTML content too short ($($html.Length) bytes), likely blocked or error page"
+    if ($html.Length -lt 5000) {
+        Add-Content $logFile "$timestamp - HTML content too short ($($html.Length) bytes), likely error page or blocked"
+        Add-Content $logFile "$timestamp - First 500 chars: $($html.Substring(0, [Math]::Min(500, $html.Length)))"
         exit 0
     }
 
