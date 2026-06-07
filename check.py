@@ -29,15 +29,21 @@ def get_previous_state():
     if Path(STATE_FILE).exists():
         try:
             content = Path(STATE_FILE).read_text(encoding='utf-8').strip()
+            log_msg(f"DEBUG: Raw file content (repr): {repr(content)}")
             # Format: "state|timestamp" or just "state" for backward compatibility
             if "|" in content:
                 state, prev_timestamp = content.split("|", 1)
-                return state.strip(), prev_timestamp.strip()
+                state = state.strip()
+                prev_timestamp = prev_timestamp.strip()
+                log_msg(f"DEBUG: Parsed state='{state}', timestamp='{prev_timestamp}'")
+                return state, prev_timestamp
             else:
+                log_msg(f"DEBUG: No pipe found, returning content as state: '{content}'")
                 return content, None
         except Exception as e:
             log_msg(f"Warning: Error reading state file: {e}")
             return "out_of_stock", None
+    log_msg("DEBUG: State file does not exist, returning default")
     return "out_of_stock", None
 
 def save_state(state):
