@@ -29,21 +29,15 @@ def get_previous_state():
     if Path(STATE_FILE).exists():
         try:
             content = Path(STATE_FILE).read_text(encoding='utf-8-sig').strip()  # utf-8-sig removes BOM
-            log_msg(f"DEBUG: Raw file content (repr): {repr(content)}")
             # Format: "state|timestamp" or just "state" for backward compatibility
             if "|" in content:
                 state, prev_timestamp = content.split("|", 1)
-                state = state.strip()
-                prev_timestamp = prev_timestamp.strip()
-                log_msg(f"DEBUG: Parsed state='{state}', timestamp='{prev_timestamp}'")
-                return state, prev_timestamp
+                return state.strip(), prev_timestamp.strip()
             else:
-                log_msg(f"DEBUG: No pipe found, returning content as state: '{content}'")
                 return content, None
         except Exception as e:
             log_msg(f"Warning: Error reading state file: {e}")
             return "out_of_stock", None
-    log_msg("DEBUG: State file does not exist, returning default")
     return "out_of_stock", None
 
 def save_state(state):
@@ -55,8 +49,8 @@ def check_stock():
     log_msg("Check started")
     log_msg(f"Opening URL: {URL}")
 
-    # TEST MODE - Remove this after testing
-    TEST_MODE = True  # TEMPORARY: Set to True for notification testing
+    # TEST MODE - Set to True for testing, False for production
+    TEST_MODE = False
     if TEST_MODE:
         log_msg("TEST MODE: Simulating in-stock status")
         return True, ["テストモード: カートに入れるボタンが表示 (シミュレーション)"]
@@ -180,18 +174,11 @@ try:
     current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     log_msg(f"Previous state: {previous_state} (at {previous_timestamp}), Current state: {current_state}")
-    log_msg(f"DEBUG: Checking condition - current_state=='{current_state}' and previous_state=='{previous_state}'")
-    log_msg(f"DEBUG: Condition result: {current_state == 'in_stock' and previous_state == 'out_of_stock'}")
 
     # Send notification if stock status changed from out to in
     if current_state == "in_stock" and previous_state == "out_of_stock":
         log_msg("Stock detected! Sending notification...")
-        log_msg(f"DEBUG: Stock details: {stock_details}")
-        log_msg(f"DEBUG: Calling send_discord_notification with prev_ts={previous_timestamp}, curr_ts={current_timestamp}")
         send_discord_notification(stock_details, previous_timestamp, current_timestamp)
-        log_msg("DEBUG: send_discord_notification completed")
-    else:
-        log_msg(f"DEBUG: Condition not met - no notification sent")
 
     save_state(current_state)
     log_msg("Check completed successfully")
