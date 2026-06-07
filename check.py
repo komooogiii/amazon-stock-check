@@ -27,19 +27,23 @@ def log_msg(message):
 def get_previous_state():
     """Get previous state and timestamp"""
     if Path(STATE_FILE).exists():
-        content = Path(STATE_FILE).read_text().strip()
-        # Format: "state|timestamp" or just "state" for backward compatibility
-        if "|" in content:
-            state, prev_timestamp = content.split("|", 1)
-            return state.strip(), prev_timestamp.strip()
-        else:
-            return content, None
+        try:
+            content = Path(STATE_FILE).read_text(encoding='utf-8').strip()
+            # Format: "state|timestamp" or just "state" for backward compatibility
+            if "|" in content:
+                state, prev_timestamp = content.split("|", 1)
+                return state.strip(), prev_timestamp.strip()
+            else:
+                return content, None
+        except Exception as e:
+            log_msg(f"Warning: Error reading state file: {e}")
+            return "out_of_stock", None
     return "out_of_stock", None
 
 def save_state(state):
     """Save state with current timestamp"""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    Path(STATE_FILE).write_text(f"{state}|{timestamp}")
+    Path(STATE_FILE).write_text(f"{state}|{timestamp}", encoding='utf-8')
 
 def check_stock():
     log_msg("Check started")
