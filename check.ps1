@@ -37,17 +37,19 @@ try {
 
     Log "$timestamp - HTTP Status: $($response.StatusCode), Content Length: $($html.Length)"
 
-    # Check if response is valid
-    if ($response.StatusCode -ne 200) {
+    # Check if response is valid (accept 200, 201, 202, 206)
+    if ($response.StatusCode -notin @(200, 201, 202, 206)) {
         Log "$timestamp - Invalid HTTP status: $($response.StatusCode), skipping check"
         exit 0
     }
 
-    if ($html.Length -lt 5000) {
-        Log "$timestamp - HTML content too short ($($html.Length) bytes), likely error page or blocked"
-        Log "$timestamp - First 500 chars: $($html.Substring(0, [Math]::Min(500, $html.Length)))"
+    if ($html.Length -lt 500) {
+        Log "$timestamp - HTML content too short ($($html.Length) bytes), likely error or empty"
+        Log "$timestamp - Content: $html"
         exit 0
     }
+
+    Log "$timestamp - Content preview (first 300 chars): $($html.Substring(0, [Math]::Min(300, $html.Length)))"
 
     # More accurate stock detection
     $isInStock = $html -match "(?i)(カートに入れる|buy now|in stock)" -and $html -notmatch "(?i)(sold out|out of stock|在庫なし|品切れ)"
