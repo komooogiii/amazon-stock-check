@@ -5,18 +5,11 @@ from datetime import datetime
 from pathlib import Path
 
 try:
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.chrome.service import Service
+    from playwright.sync_api import sync_playwright
 except ImportError:
-    print("ERROR: Selenium not installed. Installing...")
-    os.system("pip install selenium -q")
-    from selenium import webdriver
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
+    print("Installing Playwright...")
+    os.system("pip install playwright -q && playwright install chromium -q")
+    from playwright.sync_api import sync_playwright
 
 # Configuration
 URL = "https://www.amazon.co.jp/baby-reg/welcomebox?_encoding=UTF8&ref_=cct_cg_PXbenefit_2b1&pf_rd_p=9cc85c64-a328-41c8-b7be-e1dcaa476709&pf_rd_r=VHCS878C8VFC2T3FVY43"
@@ -41,58 +34,61 @@ def save_state(state):
 
 def check_stock():
     log_msg("Check started")
+    log_msg(f"Opening URL: {URL}")
 
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-    driver = None
     try:
-        driver = webdriver.Chrome(options=options)
-        log_msg(f"Opening URL: {URL}")
-        driver.get(URL)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
 
-        # Wait for page to load
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.TAG_NAME, "body"))
-        )
+            try:
+                page.goto(URL, wait_until="networkidle", timeout=30000)
+                log_msg("Page loaded successfully")
 
-        # Get page source
-        page_source = driver.page_source
-        log_msg(f"Page loaded, source length: {len(page_source)}")
+                # Get page content
+                content = page.content()
+                log_msg(f"Page content length: {len(content)}")
 
-        # Check for stock indicators
-        is_in_stock = False
+                # Check for stock indicators
+                is_in_stock = False
 
-        # Japanese indicators
-        if "カートに入れる" in page_source and "在庫なし" not in page_source and "品切れ" not in page_source:
-            is_in_stock = True
-            log_msg("Stock indicator found: カートに入れる (Add to Cart button)")
+                # Japanese indicators for in-stock
+                if "カートに入れる" in content:
+                    is_in_stock = True
+                    log_msg("Found: カートに入れる (Add to Cart button)")
 
-        # English indicators
-        if "buy now" in page_source.lower() and "out of stock" not in page_source.lower():
-            is_in_stock = True
-            log_msg("Stock indicator found: buy now button")
+                # English indicators for in-stock
+                if "buy now" in content.lower() or "add to cart" in content.lower():
+                    is_in_stock = True
+                    log_msg("Found: buy now or add to cart button")
 
-        # Out of stock indicators
-        if "在庫なし" in page_source or "品切れ" in page_source or "out of stock" in page_source.lower():
-            is_in_stock = False
-            log_msg("Out of stock indicator found")
+                # Out of stock indicators
+                if "在庫なし" in content or "品切れ" in content:
+                    is_in_stock = False
+                    log_msg("Found: 在庫なし or 品切れ (out of stock)")
 
-        log_msg(f"Stock status determined: {'in_stock' if is_in_stock else 'out_of_stock'}")
-        log_msg(f"Page preview (first 500 chars): {page_source[:500]}")
+                if "out of stock" in content.lower() or "sold out" in content.lower():
+                    is_in_stock = False
+                    log_msg("Found: out of stock or sold out")
 
-        return is_in_stock
+                log_msg(f"Stock status: {'in_stock' if is_in_stock else 'out_of_stock'}")
+
+                # Show page preview
+                preview = content[:500].replace("\n", " ")
+                log_msg(f"Page preview: {preview}")
+
+                return is_in_stock
+
+            finally:
+                browser.close()
 
     except Exception as e:
         log_msg(f"Error during stock check: {str(e)}")
+        import traceback
+        log_msg(traceback.format_exc())
         return False
-    finally:
-        if driver:
-            driver.quit()
 
 def send_discord_notification():
     if not DISCORD_WEBHOOK:
@@ -130,4 +126,6 @@ try:
 
 except Exception as e:
     log_msg(f"Fatal error: {str(e)}")
+    import traceback
+    log_msg(traceback.format_exc())
     sys.exit(1)

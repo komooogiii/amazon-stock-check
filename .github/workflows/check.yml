@@ -19,12 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install selenium requests
-
-      - name: Install Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
+          pip install playwright requests
 
       - name: Run stock check
         env:
