@@ -46,7 +46,7 @@ def check_stock():
     log_msg(f"Opening URL: {URL}")
 
     # TEST MODE - Remove this after testing
-    TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+    TEST_MODE = True  # TEMPORARY: Set to True for notification testing
     if TEST_MODE:
         log_msg("TEST MODE: Simulating in-stock status")
         return True, ["テストモード: カートに入れるボタンが表示 (シミュレーション)"]
