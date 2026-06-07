@@ -6,8 +6,14 @@ $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 # Discord Webhook URL from environment variable
 $discordWebhookUrl = $env:DISCORD_WEBHOOK
 
+function Log {
+    param([string]$message)
+    Add-Content $logFile $message
+    Write-Host $message
+}
+
 try {
-    Add-Content $logFile "$timestamp - Check started"
+    Log "$timestamp - Check started"
 
     $headers = @{
         "Accept" = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
@@ -29,17 +35,17 @@ try {
 
     $html = $response.Content
 
-    Add-Content $logFile "$timestamp - HTTP Status: $($response.StatusCode), Content Length: $($html.Length)"
+    Log "$timestamp - HTTP Status: $($response.StatusCode), Content Length: $($html.Length)"
 
     # Check if response is valid
     if ($response.StatusCode -ne 200) {
-        Add-Content $logFile "$timestamp - Invalid HTTP status: $($response.StatusCode), skipping check"
+        Log "$timestamp - Invalid HTTP status: $($response.StatusCode), skipping check"
         exit 0
     }
 
     if ($html.Length -lt 5000) {
-        Add-Content $logFile "$timestamp - HTML content too short ($($html.Length) bytes), likely error page or blocked"
-        Add-Content $logFile "$timestamp - First 500 chars: $($html.Substring(0, [Math]::Min(500, $html.Length)))"
+        Log "$timestamp - HTML content too short ($($html.Length) bytes), likely error page or blocked"
+        Log "$timestamp - First 500 chars: $($html.Substring(0, [Math]::Min(500, $html.Length)))"
         exit 0
     }
 
@@ -49,10 +55,11 @@ try {
     $previousState = if (Test-Path $stateFile) { Get-Content $stateFile } else { "out_of_stock" }
     $currentState = if ($isInStock) { "in_stock" } else { "out_of_stock" }
 
-    Add-Content $logFile "$timestamp - Previous: $previousState, Current: $currentState"
+    Log "$timestamp - Previous: $previousState, Current: $currentState"
+    Log "$timestamp - Is In Stock (based on keywords): $isInStock"
 
     if ($currentState -eq "in_stock" -and $previousState -eq "out_of_stock") {
-        Add-Content $logFile "$timestamp - Stock detected!"
+        Log "$timestamp - Stock detected! Sending Discord notification..."
 
         # Discord notification
         if ($discordWebhookUrl) {
@@ -62,17 +69,17 @@ try {
                 } | ConvertTo-Json
 
                 Invoke-WebRequest -Uri $discordWebhookUrl -Method Post -Body $discordPayload -ContentType "application/json" -TimeoutSec 10
-                Add-Content $logFile "$timestamp - Discord notification sent"
+                Log "$timestamp - Discord notification sent"
             }
             catch {
-                Add-Content $logFile "$timestamp - Discord error: $_"
+                Log "$timestamp - Discord error: $_"
             }
         }
     }
 
     Set-Content $stateFile $currentState
-    Add-Content $logFile "$timestamp - Check completed"
+    Log "$timestamp - Check completed successfully"
 }
 catch {
-    Add-Content $logFile "$timestamp - Error: $_"
+    Log "$timestamp - Error: $_"
 }
