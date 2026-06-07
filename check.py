@@ -53,24 +53,35 @@ def check_stock():
 
                 # Check for stock indicators
                 is_in_stock = False
+                stock_details = []
 
                 # Japanese indicators for in-stock
                 if "カートに入れる" in content:
                     is_in_stock = True
+                    stock_details.append("カートに入れるボタンが表示")
                     log_msg("Found: カートに入れる (Add to Cart button)")
 
                 # English indicators for in-stock
-                if "buy now" in content.lower() or "add to cart" in content.lower():
+                if "buy now" in content.lower():
                     is_in_stock = True
-                    log_msg("Found: buy now or add to cart button")
+                    stock_details.append("'Buy Now'ボタンが表示")
+                    log_msg("Found: buy now button")
+
+                if "add to cart" in content.lower():
+                    is_in_stock = True
+                    if "Add to Cart" not in stock_details:
+                        stock_details.append("'Add to Cart'ボタンが表示")
+                    log_msg("Found: add to cart button")
 
                 # Out of stock indicators
                 if "在庫なし" in content or "品切れ" in content:
                     is_in_stock = False
+                    stock_details.append("在庫なし/品切れ表記あり")
                     log_msg("Found: 在庫なし or 品切れ (out of stock)")
 
                 if "out of stock" in content.lower() or "sold out" in content.lower():
                     is_in_stock = False
+                    stock_details.append("Out of Stock/Sold Out表記あり")
                     log_msg("Found: out of stock or sold out")
 
                 log_msg(f"Stock status: {'in_stock' if is_in_stock else 'out_of_stock'}")
@@ -79,7 +90,7 @@ def check_stock():
                 preview = content[:500].replace("\n", " ")
                 log_msg(f"Page preview: {preview}")
 
-                return is_in_stock
+                return is_in_stock, stock_details
 
             finally:
                 browser.close()
@@ -88,17 +99,29 @@ def check_stock():
         log_msg(f"Error during stock check: {str(e)}")
         import traceback
         log_msg(traceback.format_exc())
-        return False
+        return False, []
 
-def send_discord_notification():
+def send_discord_notification(stock_details):
     if not DISCORD_WEBHOOK:
         log_msg("Discord webhook not configured, skipping notification")
         return
 
     try:
         import requests
+
+        # Build message with stock details
+        message = "🎉 **Amazon Baby Welcome Box が在庫復活しました！**\n\n"
+
+        if stock_details:
+            message += "**在庫情報:**\n"
+            for detail in stock_details:
+                message += f"• {detail}\n"
+            message += "\n"
+
+        message += f"**URL:** {URL}"
+
         payload = {
-            "content": "🎉 **Amazon Baby Welcome Box is IN STOCK!**\n" + URL
+            "content": message
         }
         response = requests.post(DISCORD_WEBHOOK, json=payload, timeout=10)
         if response.status_code in [200, 204]:
@@ -110,7 +133,7 @@ def send_discord_notification():
 
 # Main logic
 try:
-    is_in_stock = check_stock()
+    is_in_stock, stock_details = check_stock()
     current_state = "in_stock" if is_in_stock else "out_of_stock"
     previous_state = get_previous_state()
 
@@ -119,7 +142,7 @@ try:
     # Send notification if stock status changed from out to in
     if current_state == "in_stock" and previous_state == "out_of_stock":
         log_msg("Stock detected! Sending notification...")
-        send_discord_notification()
+        send_discord_notification(stock_details)
 
     save_state(current_state)
     log_msg("Check completed successfully")
