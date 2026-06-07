@@ -170,11 +170,18 @@ try:
     current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     log_msg(f"Previous state: {previous_state} (at {previous_timestamp}), Current state: {current_state}")
+    log_msg(f"DEBUG: Checking condition - current_state=='{current_state}' and previous_state=='{previous_state}'")
+    log_msg(f"DEBUG: Condition result: {current_state == 'in_stock' and previous_state == 'out_of_stock'}")
 
     # Send notification if stock status changed from out to in
     if current_state == "in_stock" and previous_state == "out_of_stock":
         log_msg("Stock detected! Sending notification...")
+        log_msg(f"DEBUG: Stock details: {stock_details}")
+        log_msg(f"DEBUG: Calling send_discord_notification with prev_ts={previous_timestamp}, curr_ts={current_timestamp}")
         send_discord_notification(stock_details, previous_timestamp, current_timestamp)
+        log_msg("DEBUG: send_discord_notification completed")
+    else:
+        log_msg(f"DEBUG: Condition not met - no notification sent")
 
     save_state(current_state)
     log_msg("Check completed successfully")
