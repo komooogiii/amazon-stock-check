@@ -12,7 +12,21 @@ try {
     $response = Invoke-WebRequest -Uri $url -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -TimeoutSec 10 -Headers @{"Accept-Language"="ja-JP,ja;q=0.9"}
     $html = $response.Content
 
-    $isInStock = $html -match "in stock|available|order now" -or $html -notmatch "out of stock|sold out"
+    Add-Content $logFile "$timestamp - HTTP Status: $($response.StatusCode), Content Length: $($html.Length)"
+
+    # Check if response is valid
+    if ($response.StatusCode -ne 200) {
+        Add-Content $logFile "$timestamp - Invalid HTTP status: $($response.StatusCode), skipping check"
+        exit 0
+    }
+
+    if ($html.Length -lt 1000) {
+        Add-Content $logFile "$timestamp - HTML content too short ($($html.Length) bytes), likely blocked or error page"
+        exit 0
+    }
+
+    # More accurate stock detection
+    $isInStock = $html -match "(?i)(カートに入れる|buy now|in stock)" -and $html -notmatch "(?i)(sold out|out of stock|在庫なし|品切れ)"
 
     $previousState = if (Test-Path $stateFile) { Get-Content $stateFile } else { "out_of_stock" }
     $currentState = if ($isInStock) { "in_stock" } else { "out_of_stock" }
