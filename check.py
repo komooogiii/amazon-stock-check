@@ -28,7 +28,7 @@ def get_previous_state():
     """Get previous state and timestamp"""
     if Path(STATE_FILE).exists():
         try:
-            content = Path(STATE_FILE).read_text(encoding='utf-8').strip()
+            content = Path(STATE_FILE).read_text(encoding='utf-8-sig').strip()  # utf-8-sig removes BOM
             log_msg(f"DEBUG: Raw file content (repr): {repr(content)}")
             # Format: "state|timestamp" or just "state" for backward compatibility
             if "|" in content:
